@@ -10,6 +10,7 @@ using Dalamud.Utility.Signatures;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Hooking;
 using Dalamud.Logging;
+using xivr.Structures;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Kernel;
 using FFXIVClientStructs.FFXIV.Client.Game.Control;
@@ -21,11 +22,14 @@ using FFXIVClientStructs.FFXIV.Client.Game.Character;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using FFXIVClientStructs.Havok;
 using FFXIVClientStructs.FFXIV.Client.Graphics;
-using xivr.Structures;
-using xivr.StructuresEx;
+using System.Threading.Tasks;
+using FFXIVClientStructs.Interop.Attributes;
+using Newtonsoft.Json.Linq;
+using static KATNativeSDK;
 
 namespace xivr
 {
+
     public delegate void HandleStatusDelegate(bool status);
     public delegate void HandleInputDelegate(InputAnalogActionData analog, InputDigitalActionData digital);
 
@@ -58,6 +62,7 @@ namespace xivr
 
     internal unsafe class xivr_hooks
     {
+      
         protected Dictionary<string, HandleStatusDelegate> functionList = new Dictionary<string, HandleStatusDelegate>();
         protected Dictionary<ActionButtonLayout, HandleInputDelegate> inputList = new Dictionary<ActionButtonLayout, HandleInputDelegate>();
 
@@ -77,7 +82,8 @@ namespace xivr
                 0xC3  // ret
             };
 
-
+        private Vector3 vector_reverse = new Vector3();
+        private DeviceDescription deviceDesc = GetDevicesDesc(0);
         private bool initalized = false;
         private bool hooksSet = false;
         private bool enableVR = true;
@@ -101,6 +107,8 @@ namespace xivr
         private ChangedTypeBool mouseoverUI = new ChangedTypeBool();
         private ChangedTypeBool mouseoverTarget = new ChangedTypeBool();
         private Vector2 rotateAmount = new Vector2(0.0f, 0.0f);
+        private Vector3 onwardAngle = new Vector3(0.0f, 0.0f, 0.0f);
+        private Vector3 onwardDiff = new Vector3(0.0f, 0.0f, 0.0f);
         private Point virtualMouse = new Point(0, 0);
         private Point actualMouse = new Point(0, 0);
         private Dictionary<ActionButtonLayout, bool> inputState = new Dictionary<ActionButtonLayout, bool>();
@@ -147,7 +155,6 @@ namespace xivr
                                                         -1, 0, 0, 0,
                                                          0, 0, 0, 1);
 
-        private ExclusiveExtras exExtras = new ExclusiveExtras();
         private SceneCameraManager* camInst = null;
         private ControlSystemCameraManager* csCameraManager = null;
         private TargetSystem* targetSystem = TargetSystem.Instance();
@@ -155,7 +162,6 @@ namespace xivr
         private FFXIVClientStructs.FFXIV.Client.System.Framework.Framework* frameworkInstance = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework.Instance();
         private AtkTextNode* vrTargetCursor = null;
         private CharSelectionCharList* charList = null;
-        
 
         private static class Signatures
         {
@@ -166,7 +172,6 @@ namespace xivr
             internal const string g_ControlSystemCameraManager = "48 8D 0D ?? ?? ?? ?? F3 0F 10 4B ??";
             internal const string g_SelectScreenCharacterList = "4C 8D 35 ?? ?? ?? ?? BF C8 00 00 00";
             internal const string g_DisableSetCursorPosAddr = "FF ?? ?? ?? ?? 00 C6 05 ?? ?? ?? ?? 00 0F B6 43 38";
-            
 
             internal const string GetCutsceneCameraOffset = "E8 ?? ?? ?? ?? 48 8B 70 48 48 85 F6";
             internal const string GameObjectGetPosition = "83 79 7C 00 75 09 F6 81 ?? ?? ?? ?? ?? 74 2A";
@@ -268,7 +273,7 @@ namespace xivr
         }
 
 
-        
+
         public bool Initialize()
         {
             if (xivr_Ex.cfg.data.vLog)
@@ -283,23 +288,23 @@ namespace xivr
                 IntPtr tmpAddress = DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_SceneCameraManagerInstance);
                 camInst = (SceneCameraManager*)(*(UInt64*)tmpAddress);
 
-                tls_index = (UInt64)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_tls_index);
+                csCameraManager = (ControlSystemCameraManager*)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_ControlSystemCameraManager);
                 globalScaleAddress = (UInt64)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_TextScale);
                 RenderTargetManagerAddress = (UInt64)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_RenderTargetManagerInstance);
+                tls_index = (UInt64)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_tls_index);
                 csCameraManager = (ControlSystemCameraManager*)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_ControlSystemCameraManager);
                 charList = (CharSelectionCharList*)DalamudApi.SigScanner.GetStaticAddressFromSig(Signatures.g_SelectScreenCharacterList);
                 DisableSetCursorPosAddr = (UInt64)DalamudApi.SigScanner.ScanText(Signatures.g_DisableSetCursorPosAddr);
                 DisableSetCursorPosOrig = *(UInt64*)DisableSetCursorPosAddr;
 
                 renderTargetManager = *(Structures.RenderTargetManager**)RenderTargetManagerAddress;
-                
 
                 curRenderMode = RenderModes.None;
                 GetThreadedDataInit();
                 SetFunctionHandles();
                 SetInputHandles();
 
-                controllerCallback = (buttonId, analog, digital) =>
+                 controllerCallback = (buttonId, analog, digital) =>
                 {
                     if (inputList.ContainsKey(buttonId))
                         inputList[buttonId](analog, digital);
@@ -311,7 +316,6 @@ namespace xivr
                 };
 
                 Imports.SetLogFunction(internalLogging);
-                exExtras.Initalize();
                 initalized = true;
             }
             if (xivr_Ex.cfg.data.vLog)
@@ -340,6 +344,7 @@ namespace xivr
                 PluginLog.Log($"-- uiOffsetZ = {xivr_Ex.cfg.data.uiOffsetZ}");
                 PluginLog.Log($"-- uiOffsetScale = {xivr_Ex.cfg.data.uiOffsetScale}");
                 PluginLog.Log($"-- conloc = {xivr_Ex.cfg.data.conloc}");
+                PluginLog.Log($"-- thrmillloc = {xivr_Ex.cfg.data.thrmillloc}");
                 PluginLog.Log($"-- swapEyes = {xivr_Ex.cfg.data.swapEyes}");
                 PluginLog.Log($"-- swapEyesUI = {xivr_Ex.cfg.data.swapEyesUI}");
                 PluginLog.Log($"-- motioncontrol = {xivr_Ex.cfg.data.motioncontrol}");
@@ -447,7 +452,7 @@ namespace xivr
 
                 ConfigModule.Instance()->SetOption(ConfigOption.Gamma, 0);
                 ConfigModule.Instance()->SetOption(ConfigOption.Fps, 0);
-                ConfigModule.Instance()->SetOption(ConfigOption.MouseOpeLimit, 0);
+                ConfigModule.Instance()->SetOption(ConfigOption.MouseOpeLimit, SavedSettings[ConfigOption.MouseOpeLimit]);
 
 
                 //----
@@ -728,7 +733,7 @@ namespace xivr
 
         private ChangedType<CameraModes> gameMode = new ChangedType<CameraModes>(CameraModes.None);
 
-        
+
         bool outputBonesOnce = false;
         public void Update(Dalamud.Game.Framework framework_)
         {
@@ -791,9 +796,6 @@ namespace xivr
                     Character* bonedCharacter = (Character*)player.Address;
                     isMounted = bonedCharacter->IsMounted();
                 }
-
-                
-
 
                 //if (player != null && curEye == 0 && gameMode.Current == CameraModes.FirstPerson)
                 if (player != null && gameMode.Current == CameraModes.FirstPerson)
@@ -978,8 +980,24 @@ namespace xivr
                                             if (xivr_Ex.cfg.data.immersiveMovement == false && xivr_Ex.cfg.data.immersiveFull == false)
                                             {
                                                 Vector3 angles = new Vector3(0, 0, 0);
-                                                //if (xivr_Ex.cfg.data.conloc)
-                                                //    angles = GetAngles(lhcMatrix);
+                                                if (xivr_Ex.cfg.data.conloc)
+                                                {
+                                                    angles = GetAngles(lhcMatrix);
+                                                }
+                                                else if (xivr_Ex.cfg.data.thrmillloc)
+                                                {
+                                                    TreadMillData data = GetWalkStatus(deviceDesc.serialNumber);
+                                                    Quaternion angle_thread = data.bodyRotationRaw;
+                                                    Vector3 vector = QuaternionToVector3(angle_thread);
+                                                    if (xivr_Ex.cfg.data.recalibrate_threadmill == true)
+                                                    {
+                                                        vector_reverse = vector;
+                                                        xivr_Ex.cfg.data.runRecenter = false;
+                                                        Imports.Recenter();
+                                                    }
+                                                    angles = Calibrated_value(vector - vector_reverse);
+                                                }
+                                                Matrix4x4 revOnward = Matrix4x4.CreateFromAxisAngle(new Vector3(0, 1, 0), -angles.Y);
 
                                                 boneArray[abdomen].SetReference(true, false);
                                                 boneArray[spineA].SetReference(true, true);
@@ -987,7 +1005,7 @@ namespace xivr
                                                 boneArray[spineA].updateRotation = true;
                                                 boneArray[spineA].transform.Rotation = (boneArray[spineA].transform.Rotation.Convert() * Quaternion.CreateFromAxisAngle(new Vector3(1, 0, 0), angles.Y)).Convert();
 
-                                                if (xivr_Ex.cfg.data.conloc == false && xivr_Ex.cfg.data.hmdloc == false)
+                                                if (xivr_Ex.cfg.data.conloc == false && xivr_Ex.cfg.data.hmdloc == false && xivr_Ex.cfg.data.thrmillloc == false)
                                                 {
                                                     boneArray[spineA].updatePosition = true;
                                                     boneArray[spineA].transform.Translation.X = -(hmdMatrix.Translation.X * 0.5f);
@@ -1201,8 +1219,6 @@ namespace xivr
                     Imports.HapticFeedback(ActionButtonLayout.haptics_right, 0.1f, 1.0f, 0.25f);
                 */
 
-                exExtras.UpdateHandyHousing(xboxStatus, hmdMatrix, rhcMatrix, lhcMatrix);
-
                 //----
                 // Haptics if mouse over target changes
                 //----
@@ -1245,16 +1261,10 @@ namespace xivr
                     curEye = 0;
                 else
                     curEye = nextEye[curEye];
-                //curEye = 0;
             }
 
             //SetFramePose();
             //PluginLog.Log($"-- Update --  {curEye}");
-        }
-
-        public void toggleDalamudMode()
-        {
-            dalamudMode = !dalamudMode;
         }
 
         public void ForceFloatingScreen(bool forceFloating, bool isCutscene)
@@ -1301,7 +1311,6 @@ namespace xivr
             Imports.MoveWindowPos((IntPtr)screenSettings->hWnd, mainScreenAdapter, reset);
         }
 
-
         public void SetRenderingMode()
         {
             if (hooksSet == true)
@@ -1345,7 +1354,6 @@ namespace xivr
             initalized = false;
             if (xivr_Ex.cfg.data.vLog)
                 PluginLog.Log($"Dispose B {initalized} {hooksSet}");
-            exExtras.Dispose();
         }
 
         private void AddClearCommand()
@@ -1368,6 +1376,7 @@ namespace xivr
                 }
             }
         }
+
 
         /*
         //----
@@ -1754,7 +1763,7 @@ namespace xivr
 
         private void RenderThreadSetRenderTargetFn(UInt64 a, UInt64 b)
         {
-            if (hooksSet && (b + 0x8) != 0)
+            if ((b + 0x8) != 0)
             {
                 Structures.Texture* rendTrg = *(Structures.Texture**)(b + 0x8);
                 if ((rendTrg->uk5 & 0x90000000) == 0x90000000)
@@ -1866,7 +1875,6 @@ namespace xivr
         //----
         float CameraHitBoxOffset = 0.0f;
         float rawCameraHitBoxOffset = -10.0f;
-
         private void CalculateViewMatrixFn(RawGameCamera* rawGameCamera)
         {
             if (enableVR && frfCalculateViewMatrix == false)
@@ -1947,14 +1955,34 @@ namespace xivr
                         {
                             angles = GetAngles(lhcMatrix);
                         }
+                        else if (xivr_Ex.cfg.data.thrmillloc)
+                        {
+                            TreadMillData data = GetWalkStatus(deviceDesc.serialNumber);
+                            Quaternion angle_thread = data.bodyRotationRaw;
+                            Vector3 vector = QuaternionToVector3(angle_thread);
+                            if (xivr_Ex.cfg.data.recalibrate_threadmill == true)
+                            {
+                                vector_reverse = vector;
+                                xivr_Ex.cfg.data.runRecenter = false;
+                                Imports.Recenter();
+                            }
+                            angles = Calibrated_value(vector - vector_reverse);
+                        }
                         else if (xivr_Ex.cfg.data.hmdloc)
                         {
                             angles = GetAngles(hmdMatrixI);
                             angles.Y *= -1;
                         }
 
+                        Matrix4x4 revOnward = Matrix4x4.CreateFromAxisAngle(new Vector3(0, 1, 0), -angles.Y);
                         Matrix4x4 zoom = Matrix4x4.CreateTranslation(0, 0, -cameraZoom);
-                        curViewMatrixWithoutHMD = rawGameCamera->ViewMatrix * horizonLockMatrix;
+                        //revOnward = revOnward * zoom;
+                        //Matrix4x4.Invert(revOnward, out revOnward);
+
+                        if ((xivr_Ex.cfg.data.conloc == false && xivr_Ex.cfg.data.hmdloc == false && xivr_Ex.cfg.data.thrmillloc == false) || gameMode.Current == CameraModes.ThirdPerson)
+                            revOnward = Matrix4x4.Identity;
+
+                        curViewMatrixWithoutHMD = rawGameCamera->ViewMatrix * horizonLockMatrix * revOnward;
                         Matrix4x4.Invert(curViewMatrixWithoutHMD, out curViewMatrixWithoutHMDI);
 
                         //curViewMatrix = rawGameCamera->ViewMatrix * hmdMatrix;
@@ -1964,6 +1992,7 @@ namespace xivr
                             rawGameCamera->ViewMatrix = curViewMatrixWithoutHMD * hmdMatrixI * eyeOffsetMatrix[swapEyes[curEye]];
                         else
                             rawGameCamera->ViewMatrix = curViewMatrixWithoutHMD * hmdMatrixI * eyeOffsetMatrix[curEye];
+
                         //if (!inCutscene && gameMode == CameraModes.FirstPerson)
                         //    rawGameCamera->ViewMatrix = hmdMatrixI * eyeOffsetMatrix[curEye];
                     }
@@ -2036,13 +2065,51 @@ namespace xivr
             if (forceFloatingScreen == false)
             {
                 gameMode.Current = gameCamera->Camera.Mode;
+                Vector3 angles = new Vector3();
+
+                if (xivr_Ex.cfg.data.conloc)
+                {
+                    angles = GetAngles(lhcMatrix);
+                    angles.Y *= -1;
+                }
+                else if (xivr_Ex.cfg.data.thrmillloc)
+                {
+                    TreadMillData data = GetWalkStatus(deviceDesc.serialNumber);
+                    Quaternion angle_thread = data.bodyRotationRaw;
+                    Vector3 vector = QuaternionToVector3(angle_thread);
+                    if (xivr_Ex.cfg.data.recalibrate_threadmill == true)
+                    {
+                        vector_reverse = vector;
+                        xivr_Ex.cfg.data.runRecenter = false;
+                        Imports.Recenter();
+                    }
+                    angles = Calibrated_value(vector - vector_reverse);
+                    angles.Y *= -1;
+                }
+                else if (xivr_Ex.cfg.data.hmdloc)
+                {
+                    angles = GetAngles(hmdMatrixI);
+                    angles.X *= -1;
+                }
+
+                onwardDiff = angles - onwardAngle;
+                onwardAngle = angles;
 
                 if (xivr_Ex.cfg.data.horizontalLock)
                     gameCamera->Camera.HRotationThisFrame2 = 0;
                 if (xivr_Ex.cfg.data.verticalLock)
                     gameCamera->Camera.VRotationThisFrame2 = 0;
+                if ((xivr_Ex.cfg.data.conloc == false && xivr_Ex.cfg.data.hmdloc == false && xivr_Ex.cfg.data.thrmillloc == false) || gameMode.Current == CameraModes.ThirdPerson)
+                {
+                    onwardDiff.Y = 0;
+                    onwardDiff.X = 0;
+                    onwardDiff.Z = 0;
+                }
 
-                gameCamera->Camera.HRotationThisFrame2 += rotateAmount.X;
+                //gameCamera->Camera.HRotationThisFrame1 += onwardDiff.Y + rotateAmount.X;
+                gameCamera->Camera.HRotationThisFrame2 += onwardDiff.Y + rotateAmount.X;
+                //gameCamera->Camera.VRotationThisFrame1 += onwardDiff.X + rotateAmount.Y;
+                //gameCamera->Camera.VRotationThisFrame2 += onwardDiff.X + rotateAmount.Y;
 
                 if (gameMode.Current == CameraModes.FirstPerson)
                 {
@@ -2051,7 +2118,7 @@ namespace xivr
                 }
 
                 if (xivr_Ex.cfg.data.vertloc)
-                    gameCamera->Camera.VRotationThisFrame2 += rotateAmount.Y;
+                    gameCamera->Camera.VRotationThisFrame2 += onwardDiff.X + rotateAmount.Y;
                 else
                     gameCamera->Camera.VRotationThisFrame2 += rotateAmount.Y;
 
@@ -2617,60 +2684,8 @@ namespace xivr
                     *(float*)(controllerAddress + (UInt64)(offsets->select * 4)) = xboxStatus.select.value;
             }
 
-
             if (xivr_Ex.cfg.data.motioncontrol)
             {
-                bool doLocomotion = false;
-                Vector3 angles = new Vector3();
-                if (xivr_Ex.cfg.data.conloc)
-                {
-                    angles = GetAngles(lhcMatrix);
-                    doLocomotion = true;
-                }
-                else if (xivr_Ex.cfg.data.hmdloc)
-                {
-                    angles = GetAngles(hmdMatrix);
-                    doLocomotion = true;
-                }
-                if (doLocomotion)
-                { 
-                    float up_down = (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_up * 4))) + -(*(float*)(controllerAddress + (UInt64)(offsets->left_stick_down * 4)));
-                    float left_right = -(*(float*)(controllerAddress + (UInt64)(offsets->left_stick_left * 4))) + (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_right * 4)));
-
-                    float stickAngle = MathF.Atan2(left_right, up_down);
-                    if (left_right == -1) stickAngle = -90 * Deg2Rad;
-                    else if (left_right == 1) stickAngle = 90 * Deg2Rad;
-                    stickAngle += angles.Y;
-
-                    Vector2 newValue = new Vector2(MathF.Sin(stickAngle), MathF.Cos(stickAngle));
-                    float hyp = MathF.Sqrt(up_down * up_down + left_right * left_right);
-                    newValue.X *= hyp;
-                    newValue.Y *= hyp;
-
-                    //PluginLog.Log($"{angles.Y * Rad2Deg} {newValue.Y} | {newValue.X} | {stickAngle * Rad2Deg}");
-                    if (newValue.Y > 0)
-                    {
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_up * 4))) = MathF.Abs(newValue.Y);
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_down * 4))) = 0;
-                    }
-                    else
-                    {
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_up * 4))) = 0;
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_down * 4))) = MathF.Abs(newValue.Y);
-                    }
-
-                    if (newValue.X > 0)
-                    {
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_left * 4))) = 0;
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_right * 4))) = MathF.Abs(newValue.X);
-                    }
-                    else
-                    {
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_left * 4))) = MathF.Abs(newValue.X);
-                        (*(float*)(controllerAddress + (UInt64)(offsets->left_stick_right * 4))) = 0;
-                    }
-                }
-
                 leftBumperValue = *(float*)(controllerAddress + (UInt64)(offsets->left_bumper * 4));
                 float curRightTriggerValue = *(float*)(controllerAddress + (UInt64)(offsets->right_trigger * 4));
                 float curRightBumperValue = *(float*)(controllerAddress + (UInt64)(offsets->right_bumper * 4));
@@ -2772,7 +2787,7 @@ namespace xivr
                     {
                         if (xboxStatus.right_bumper.active == true)
                         {
-                            toggleDalamudMode();
+                            dalamudMode = !dalamudMode;
                             Imports.HapticFeedback(ActionButtonLayout.haptics_right, 0.1f, 50.0f, 100.0f);
                         }
                         else

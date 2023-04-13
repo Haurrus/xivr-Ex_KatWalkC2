@@ -64,6 +64,9 @@ namespace xivr
                 if (ImGui.Checkbox(lngOptions.conloc_Line1, ref xivr_Ex.cfg.data.conloc))
                     xivr_Ex.Plugin.doUpdate = true;
 
+                if (ImGui.Checkbox(lngOptions.thrmillloc_Line1, ref xivr_Ex.cfg.data.thrmillloc))
+                    xivr_Ex.Plugin.doUpdate = true;
+
                 if (ImGui.Checkbox(lngOptions.hmdloc_Line1, ref xivr_Ex.cfg.data.hmdloc))
                     xivr_Ex.Plugin.doUpdate = true;
 
@@ -77,6 +80,9 @@ namespace xivr
                     xivr_Ex.Plugin.doUpdate = true;
 
                 if (ImGui.Checkbox(lngOptions.forceFloatingInCutscene_Line1, ref xivr_Ex.cfg.data.forceFloatingInCutscene))
+                    xivr_Ex.Plugin.doUpdate = true;
+
+                if (ImGui.Checkbox(lngOptions.recalibrate_threadmill_Line1, ref xivr_Ex.cfg.data.recalibrate_threadmill))
                     xivr_Ex.Plugin.doUpdate = true;
 
                 ImGui.EndChild();

@@ -54,6 +54,8 @@ namespace xivr
             [MarshalAs(UnmanagedType.U1)] public bool immersiveMovement;
             [MarshalAs(UnmanagedType.U1)] public bool immersiveFull;
             [MarshalAs(UnmanagedType.U1)] public bool ultrawideshadows;
+            [MarshalAs(UnmanagedType.U1)] public bool thrmillloc;
+            [MarshalAs(UnmanagedType.U1)] public bool recalibrate_threadmill;
 
             public cfgData()
             {
@@ -97,6 +99,8 @@ namespace xivr
                 immersiveMovement = false;
                 immersiveFull = false;
                 ultrawideshadows = false;
+                thrmillloc = false;
+                recalibrate_threadmill = false;
             }
         }
 
@@ -118,7 +122,7 @@ namespace xivr
 
         public void CheckVersion(int UpdateValue)
         {
-            if(data.resetValue != UpdateValue)
+            if (data.resetValue != UpdateValue)
             {
                 int hmdWidth = data.hmdWidth;
                 int hmdHeight = data.hmdHeight;

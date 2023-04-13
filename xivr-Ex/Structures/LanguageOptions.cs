@@ -48,6 +48,8 @@ namespace xivr.Structures
         public string showWeaponInHand_Line1;
         public string support_Line1;
         public string autoMove_Line1;
+        public string thrmillloc_Line1;
+        public string recalibrate_threadmill_Line1;
     }
 
     public static class Language
@@ -64,6 +66,8 @@ namespace xivr.Structures
                     vLog_Line1 = "Verbose Logs",
                     motioncontrol_Line1 = "Enable motion controllers",
                     conloc_Line1 = "Enable 1st person controller locomotion",
+                    thrmillloc_Line1 = "Enable 1st person threadmill locomotion KATWALKC2",
+                    recalibrate_threadmill_Line1 = "While checked recalibrate the KATWALKC2",
                     hmdloc_Line1 = "Enable 1st person headset locomotion",
                     vertloc_Line1 = "1st person locomotion allow vertical movement",
                     forceFloatingScreen_Line1 = "Flat mode",
@@ -105,6 +109,8 @@ namespace xivr.Structures
                     vLog_Line1 = "詳細ログ生成",
                     motioncontrol_Line1 = "モーションコントローラーを有効にする",
                     conloc_Line1 = "一人称左手移動操作",
+                    thrmillloc_Line1 = "Enable threadmill locomotion KATWALKC2",
+                    recalibrate_threadmill_Line1 = "While checked recalibrate the KATWALKC2",
                     hmdloc_Line1 = "一人称頭移動操作",
                     vertloc_Line1 = "一人称移動上下操作を有効にする",
                     forceFloatingScreen_Line1 = "平面モード",

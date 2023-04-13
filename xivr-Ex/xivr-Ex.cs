@@ -37,6 +37,8 @@ namespace xivr
         public int alphaValue = 0;
         private int UpdateValue = 1;
 
+
+
         public unsafe xivr_Ex(DalamudPluginInterface pluginInterface, TitleScreenMenu titleScreenMenu)
         {
             try
@@ -45,7 +47,7 @@ namespace xivr
                 DalamudApi.Initialize(this, pluginInterface);
                 cfg = DalamudApi.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
                 cfg.Initialize(DalamudApi.PluginInterface);
-                cfg.CheckVersion(UpdateValue);
+
 
                 DalamudApi.Framework.Update += Update;
                 DalamudApi.ClientState.Login += OnLogin;
@@ -100,8 +102,8 @@ namespace xivr
 
         public void ToggleConfig() => PluginUI.isVisible ^= true;
 
-        private const string subcommands = "/xivr [ on | off | recenter | hlock | vlock | horizon ]";
-        [Command("/xivr")]
+        private const string subcommands = "/xivr-Ex [ on | off | recenter | hlock | vlock | horizon ]";
+        [Command("/xivr-Ex")]
         [HelpMessage("Opens / closes the config. Additional usage: " + subcommands)]
         private unsafe void CheckCommands(string command, string argument)
         {
@@ -266,11 +268,6 @@ namespace xivr
                         doUpdate = true;
                         break;
                     }
-                case "dmode":
-                    {
-                        xivr_hooks.toggleDalamudMode();
-                        break;
-                    }
             }
         }
 
@@ -348,7 +345,7 @@ namespace xivr
                         hasResized = false;
                     }
 
-                    if(hasMoved == true)
+                    if (hasMoved == true)
                     {
                         xivr_hooks.WindowMove(true);
                         PluginLog.Log($"Resetting window position");
@@ -407,6 +404,7 @@ namespace xivr
                     PluginLog.Log($"Resetting window position");
                     hasMoved = false;
                 }
+
             }
             DalamudApi.TitleScreenMenu.RemoveEntry(xivrMenuEntry);
             DalamudApi.Framework.Update -= Update;
