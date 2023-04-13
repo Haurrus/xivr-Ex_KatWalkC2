@@ -5,7 +5,7 @@ I am trying to implement the functions of the Kat Walk C2.
 
 After compiling it if you want it to work you will need to import:
 
-* ..\xivr-Ex-amin\xivr-Ex\KAT_SDK\Plugin\KATNativeSDK.dll
+* ..\xivr-Ex-main\xivr-Ex\KAT_SDK\Plugin\KATNativeSDK.dll
 
 inside the root of the compiled version.
 
