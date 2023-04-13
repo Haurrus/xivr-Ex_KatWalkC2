@@ -1,0 +1,24 @@
+﻿  BasicRenderer.cpp
+E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\BasicRenderer.cpp(208,14): warning C4101: 'errorMessage': unreferenced local variable
+E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\BasicRenderer.cpp(646,42): warning C4244: '=': conversion from 'LONG' to 'float', possible loss of data
+E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\BasicRenderer.cpp(647,42): warning C4244: '=': conversion from 'LONG' to 'float', possible loss of data
+  dllmain.cpp
+  RenderObject.cpp
+E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\RenderObject.cpp(17,40): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\RenderObject.cpp(49,29): warning C4267: '=': conversion from 'size_t' to 'int', possible loss of data
+  simpleVR.cpp
+  SteamVRInput.cpp
+     Creating library E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\bin\x64\Release\xivr_main.lib and object E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\bin\x64\Release\xivr_main.exp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 749 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  xivr_main.vcxproj -> E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\bin\x64\Release\xivr_main.dll
+  E:\Projet_visual_studio\xivr-Ex-main3_2\openvr\bin\win64\openvr_api.dll
+  1 fichier(s) copié(s)
+  E:\Projet_visual_studio\xivr-Ex-main3_2\xivr_main\bin\x64\Release\xivr_main.dll
+  1 fichier(s) copié(s)
+  E:\Projet_visual_studio\xivr-Ex-main3_2\config\actions.json
+  E:\Projet_visual_studio\xivr-Ex-main3_2\config\index-marulu-230324.json
+  E:\Projet_visual_studio\xivr-Ex-main3_2\config\touch-marulu-230324.json
+  3 fichier(s) copié(s)
