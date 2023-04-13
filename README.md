@@ -3,9 +3,12 @@ Xivr-Ex with Kat Walk C/C2 modules
 This is a fork of the "XVIR" VR mod for FF14.
 I am trying to implement the functions of the Kat Walk C2.
 
-After compiling it if you want it to work you will need to import :
+After compiling it if you want it to work you will need to import:
+
 * ..\xivr-Ex-amin\xivr-Ex\KAT_SDK\Plugin\KATNativeSDK.dll
+
 to :
+
 * ..\AppData\Roaming\XIVLauncher\installedPlugins\xivr-ex\X.X.X.X\
 
 For the proper functioning of the Kat Walk C/C2 in FF14 you will need to configure the options of ffxiv_dx11.exe like this:
