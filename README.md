@@ -24,3 +24,8 @@ The second one :
             You have to stay straight with your feet aligned with your body and your head straight looking forward and then you can uncheck the box.
 
 It's still work in progress !
+
+* This is a top-level bullet point.
+  * This is a nested bullet point.
+  * This is another nested bullet point.
+* This is another top-level bullet point.
