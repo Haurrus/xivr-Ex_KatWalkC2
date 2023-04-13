@@ -7,9 +7,7 @@ After compiling it if you want it to work you will need to import:
 
 * ..\xivr-Ex-amin\xivr-Ex\KAT_SDK\Plugin\KATNativeSDK.dll
 
-to :
-
-* ..\AppData\Roaming\XIVLauncher\installedPlugins\xivr-ex\X.X.X.X\
+inside the root of the compiled version.
 
 For the proper functioning of the Kat Walk C/C2 in FF14 you will need to configure the options of ffxiv_dx11.exe like this:
 
