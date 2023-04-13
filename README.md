@@ -12,9 +12,9 @@ In the game you will have these option :
 ![image](https://user-images.githubusercontent.com/67097931/231732785-71ab1917-3775-44ff-a1ea-94f97caba992.png)
 
 The first one : 
-      - "Enable 1st person threadmill locomotion KATWALKC" :
-          It will allow the use of the Kat Walk C inside FF14 XIVR.
-          When activated you should be able to turn your character in first person 360° based on the backtracker of the Kat Walk C.
+      * "Enable 1st person threadmill locomotion KATWALKC" :
+          * It will allow the use of the Kat Walk C inside FF14 XIVR.
+          * When activated you should be able to turn your character in first person 360° based on the backtracker of the Kat Walk C.
 
 The second one : 
        - "While checked recalibrate the KATWALKC" :
